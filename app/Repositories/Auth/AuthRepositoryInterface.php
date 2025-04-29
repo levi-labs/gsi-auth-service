@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Repositories\Interfaces;
+namespace App\Repositories\Auth;
 
 interface AuthRepositoryInterface
 {
@@ -8,4 +8,5 @@ interface AuthRepositoryInterface
     public function logout();
     public function register(array $data);
     public function refreshToken();
+    public function findByEmail(string $email);
 }

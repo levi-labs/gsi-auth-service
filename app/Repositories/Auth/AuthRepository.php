@@ -7,8 +7,7 @@ namespace App\Repositories\Auth;
 
 
 use App\Models\User;
-
-use App\Repositories\Interfaces\AuthRepositoryInterface;
+use App\Repositories\Auth\AuthRepositoryInterface;
 use Tymon\JWTAuth\Contracts\Providers\JWT;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -17,7 +16,13 @@ class AuthRepository implements AuthRepositoryInterface
     public function login(array $credentials)
     {
         // Logic for user login
-        return User::where('email', $credentials['email'])->first();
+        return User::where('username', $credentials['username'])->first();
+    }
+
+    public function findByEmail(string $email)
+    {
+        // Logic to find user by email
+        return User::where('email', $email)->first();
     }
 
     public function logout()
