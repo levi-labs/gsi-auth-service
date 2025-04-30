@@ -3,6 +3,7 @@
 
 namespace App\Services;
 
+use App\Jobs\CreateProfileJob;
 use App\Jobs\SendEmailJob;
 use App\Models\User;
 use App\Repositories\Auth\AuthRepositoryInterface;
@@ -58,6 +59,15 @@ class AuthService
             $data['password'] = bcrypt($data['password']);
 
             $user = $this->authRepository->register($data);
+            if (!$user) {
+                throw new \Exception('Registration failed', 500);
+            }
+            $token = JWTAuth::fromUser($user);
+
+            if (!$token) {
+                throw new \Exception('Token generation failed', 500);
+            }
+            dispatch(new CreateProfileJob($user, $token));
 
             dispatch(new SendEmailJob($user));
 

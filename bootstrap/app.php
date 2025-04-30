@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
 
         $middleware->alias([
-            'jwt' => \App\Http\Middleware\JwtMiddleware::class
+            'jwt.test' => \App\Http\Middleware\JwtMiddleware::class
         ]);
         $middleware->trustProxies(at: '*');
     })
