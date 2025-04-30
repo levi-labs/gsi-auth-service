@@ -4,10 +4,14 @@
 namespace App\Services;
 
 use App\Jobs\SendEmailJob;
+use App\Models\User;
 use App\Repositories\Auth\AuthRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Contracts\Providers\JWT;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class AuthService
 {
@@ -78,14 +82,57 @@ class AuthService
 
         dispatch(new SendEmailJob($user, 'password'));
 
-        return true;
+        return $user;
+    }
+    public function verifyEmail($user)
+    {
+        $user = User::findOrFail($user);
+        if ($user->is_verified) {
+            return response()->json(['message' => 'Email already verified.']);
+        }
+        $user->email_verified_at = now();
+        $user->save();
+
+        return $user;
+    }
+
+    public function updatePassword($user, string $password)
+    {
+        $user = User::findOrFail($user);
+        $user->password = bcrypt($password);
+        return $user;
     }
     public function refreshToken()
     {
-        return $this->authRepository->refreshToken();
+
+        try {
+            $newToken = JWTAuth::parseToken()->refresh();
+            if (!$newToken) {
+                throw new \Exception('Token is invalid or expired', 401);
+            }
+
+            $result = [
+                'token' => $newToken,
+                'token_expires' => JWTAuth::factory()->getTTL() * 60,
+                'token_type' => 'Bearer',
+            ];
+            return $result;
+        } catch (TokenExpiredException | TokenInvalidException $err) {
+            throw new \Exception('Token is invalid or expired', 401);
+        }
     }
     public function logout()
     {
-        return $this->authRepository->logout();
+
+
+        $token = JWTAuth::parseToken();
+
+        if (!$token->check()) {
+            throw new \Exception('Token is invalid or expired', 401);
+        }
+
+        $token->invalidate();
+
+        return true;
     }
 }

@@ -46,7 +46,7 @@ class AuthController extends Controller
                     'message' => $err->getMessage(),
                     'statusCode' => $err->getCode(),
                 ],
-            ], 500);
+            ], $err->getCode() ?? 500);
         }
 
         return response()->json(['error' => 'Unauthorized'], 401);
@@ -87,24 +87,45 @@ class AuthController extends Controller
 
     public function logout()
     {
-        auth()->guard('api')->logout();
-        return response()->json(['message' => 'Successfully logged out'], 200);
+        try {
+            $result = $this->authService->logout();
+            return response()->json([
+                'meta' => [
+                    'success' => true,
+                    'message' => 'Successfully logged out',
+                    'statusCode' => 200,
+                ],
+                'data' => $result
+            ], 200);
+        } catch (\Exception $err) {
+            return response()->json([
+                'meta' => [
+                    'success' => false,
+                    'message' => $err->getMessage(),
+                    'statusCode' => $err->getCode(),
+                ],
+            ], $err->getCode() ?? 500);
+        }
     }
 
     public function verifyEmail(Request $request, $user)
     {
-        if (!$request->hasValidSignature()) {
-            return response()->json(['message' => 'Invalid or expired signature.'], 403);
-        }
-        $user = User::findOrFail($user);
+        try {
+            if (!$request->hasValidSignature()) {
+                return response()->json(['message' => 'Invalid or expired signature.'], 403);
+            }
+            $this->authService->verifyEmail($user);
 
-        if ($user->is_verified) {
-            return response()->json(['message' => 'Email already verified.']);
+            return response()->json(['message' => 'Email verified successfully.']);
+        } catch (\Exception $err) {
+            return response()->json([
+                'meta' => [
+                    'success' => false,
+                    'message' => $err->getMessage(),
+                    'statusCode' => $err->getCode(),
+                ],
+            ], 500);
         }
-        $user->email_verified_at = now();
-        $user->save();
-
-        return response()->json(['message' => 'Email verified successfully.']);
     }
     public function forgotPassword(Request $request)
     {
@@ -149,19 +170,49 @@ class AuthController extends Controller
 
     public function updatePassword(Request $request, $user)
     {
-
         $validation = Validator::make($request->all(), [
             'password' => 'required|string',
             'password_confirmation' => 'required|string|same:password',
         ]);
+
         if ($validation->fails()) {
             return response()->json(['error' => $validation->errors()], 422);
         }
 
-        $user = User::findOrFail($user);
-        $user->password = bcrypt($validation->validated()['password']);
-        $user->save();
+        try {
+            $this->authService->updatePassword($user, $validation->validated()['password']);
+            return response()->json(['message' => 'Password updated successfully.']);
+        } catch (\Exception $err) {
+            return response()->json([
+                'meta' => [
+                    'success' => false,
+                    'message' => $err->getMessage(),
+                    'statusCode' => $err->getCode(),
+                ],
+            ], 500);
+        }
+    }
 
-        return response()->json(['message' => 'Password updated successfully.']);
+    public function refreshToken()
+    {
+        try {
+            $result = $this->authService->refreshToken();
+            return response()->json([
+                'meta' => [
+                    'success' => true,
+                    'message' => 'Successfully refreshed token',
+                    'statusCode' => 200,
+                ],
+                'data' => $result
+            ], 200);
+        } catch (\Exception $err) {
+            return response()->json([
+                'meta' => [
+                    'success' => false,
+                    'message' => $err->getMessage(),
+                    'statusCode' => $err->getCode(),
+                ],
+            ], $err->getCode() ?? 500);
+        }
     }
 }
