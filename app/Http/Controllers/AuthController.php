@@ -57,7 +57,7 @@ class AuthController extends Controller
         $validation = Validator::make($request->all(), [
             'name' => 'required|string',
             'username' => 'required|string',
-            'email' => 'required|string|unique:users,email',
+            'email' => 'required|string',
             'password' => 'required|string',
         ]);
         if ($validation->fails()) {
@@ -69,7 +69,7 @@ class AuthController extends Controller
             return response()->json([
                 'meta' => [
                     'success' => true,
-                    'message' => 'Successfully registered',
+                    'message' => 'Successfully registered please check your email to verify your account',
                     'statusCode' => 201,
                 ],
                 'data' => $result
