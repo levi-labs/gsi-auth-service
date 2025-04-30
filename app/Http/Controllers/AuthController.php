@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UserRequest;
+use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -88,5 +89,79 @@ class AuthController extends Controller
     {
         auth()->guard('api')->logout();
         return response()->json(['message' => 'Successfully logged out'], 200);
+    }
+
+    public function verifyEmail(Request $request, $user)
+    {
+        if (!$request->hasValidSignature()) {
+            return response()->json(['message' => 'Invalid or expired signature.'], 403);
+        }
+        $user = User::findOrFail($user);
+
+        if ($user->is_verified) {
+            return response()->json(['message' => 'Email already verified.']);
+        }
+        $user->email_verified_at = now();
+        $user->save();
+
+        return response()->json(['message' => 'Email verified successfully.']);
+    }
+    public function forgotPassword(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'email' => 'required|string|email',
+        ]);
+        if ($validation->fails()) {
+            return response()->json(['error' => $validation->errors()], 422);
+        }
+
+        try {
+            $result = $this->authService->forgotPassword($validation->validated()['email']);
+            return response()->json([
+                'meta' => [
+                    'success' => true,
+                    'message' => 'Successfully sent email verification',
+                    'statusCode' => 200,
+                ],
+                'data' => $result
+            ], 200);
+        } catch (\Exception $err) {
+            return response()->json([
+                'meta' => [
+                    'success' => false,
+                    'message' => $err->getMessage(),
+                    'statusCode' => $err->getCode(),
+                ],
+            ], 500);
+        }
+    }
+
+    public function resetPasswordForm(Request $request, $user)
+    {
+        if (!$request->hasValidSignature()) {
+            return response()->json(['message' => 'Invalid or expired signature.'], 403);
+        }
+        $user = User::findOrFail($user);
+
+
+        return view('password.password', compact('user'));
+    }
+
+    public function updatePassword(Request $request, $user)
+    {
+
+        $validation = Validator::make($request->all(), [
+            'password' => 'required|string',
+            'password_confirmation' => 'required|string|same:password',
+        ]);
+        if ($validation->fails()) {
+            return response()->json(['error' => $validation->errors()], 422);
+        }
+
+        $user = User::findOrFail($user);
+        $user->password = bcrypt($validation->validated()['password']);
+        $user->save();
+
+        return response()->json(['message' => 'Password updated successfully.']);
     }
 }

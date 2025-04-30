@@ -3,7 +3,9 @@
 
 namespace App\Services;
 
+use App\Jobs\SendEmailJob;
 use App\Repositories\Auth\AuthRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Contracts\Providers\JWT;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -23,6 +25,9 @@ class AuthService
         if (!$user) {
             throw new \Exception('User not found', 404);
         }
+        if ($user->email_verified_at == null) {
+            throw new \Exception('Email not verified', 403);
+        }
 
         $token = JWTAuth::attempt($credentials);
 
@@ -35,26 +40,52 @@ class AuthService
         $result->token_type = 'Bearer';
         return $result;
     }
-    public function logout()
-    {
-        return $this->authRepository->logout();
-    }
+
     public function register(array $data)
     {
+        DB::beginTransaction();
 
+        try {
+            $checkEmail = $this->authRepository->findByEmail($data['email']);
+            if ($checkEmail) {
+                throw new \Exception('Email already exists', 409);
+            }
 
-        $checkEmail = $this->authRepository->findByEmail($data['email']);
-        if ($checkEmail) {
-            throw new \Exception('Email already exists', 409);
+            $data['password'] = bcrypt($data['password']);
+
+            $user = $this->authRepository->register($data);
+
+            dispatch(new SendEmailJob($user));
+
+            DB::commit();
+
+            return $user;
+        } catch (\Exception $err) {
+            DB::rollBack();
+            throw new \Exception('Registration failed: ' . $err->getMessage(), 500);
+        }
+    }
+    public function forgotPassword(string $email)
+    {
+        $user = $this->authRepository->findByEmail($email);
+        if (!$user) {
+            throw new \Exception('User not found', 404);
         }
 
-        $data['password'] = bcrypt($data['password']);
+        if ($user->email_verified_at == null) {
+            throw new \Exception('Email not verified', 403);
+        }
 
+        dispatch(new SendEmailJob($user, 'password'));
 
-        return $this->authRepository->register($data);
+        return true;
     }
     public function refreshToken()
     {
         return $this->authRepository->refreshToken();
+    }
+    public function logout()
+    {
+        return $this->authRepository->logout();
     }
 }
