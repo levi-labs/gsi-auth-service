@@ -41,7 +41,7 @@ class SendEmailJob implements ShouldQueue
         // Or you can use a service class to handle the email sending logic
 
         try {
-            if ($this->type == 'verification') {
+            if ($this->type === 'verification') {
                 URL::forceRootUrl(config('app.url'));
                 $verificationLink = URL::temporarySignedRoute(
                     'verification.verify',
@@ -49,7 +49,7 @@ class SendEmailJob implements ShouldQueue
                     ['user' => $this->user->id]
                 );
                 Log::info('Verification link: ' . $verificationLink);
-                Mail::to($this->user->email)->send(new SendEmail($this->user, $verificationLink));
+                Mail::to($this->user->email)->send(new SendEmail($this->user, $verificationLink, 'verification'));
             } else {
                 URL::forceRootUrl(config('app.url'));
                 $verificationLink = URL::temporarySignedRoute(
@@ -58,7 +58,7 @@ class SendEmailJob implements ShouldQueue
                     ['user' => $this->user->id]
                 );
                 Log::info('Password reset link: ' . $verificationLink);
-                Mail::to($this->user->email)->send(new SendEmail($this->user, $verificationLink));
+                Mail::to($this->user->email)->send(new SendEmail($this->user, $verificationLink, 'password-reset'));
             }
         } catch (\Exception $err) {
             // Handle the error

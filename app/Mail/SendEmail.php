@@ -35,14 +35,10 @@ class SendEmail extends Mailable
      */
     public function envelope(): Envelope
     {
-        if ($this->type === 'verification') {
-            $this->subject('GSI Verify Email');
-        } else {
-            $this->subject('GSI Password Reset');
-        }
+
         return new Envelope(
             from: 'GSI-verify@example.com',
-            subject: $this->subject,
+            subject: $this->type == 'verification' ? 'Verify your email address' : 'Reset your password',
 
         );
     }
@@ -62,6 +58,7 @@ class SendEmail extends Mailable
             with: [
                 'verificationLink' => $this->verificationLink,
                 'user' => $this->user,
+                'type' => $this->type,
             ],
         );
     }
